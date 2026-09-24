@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GameForge Server v0.1 Test</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 16px;background:#111;color:#eee}
+    button,input{font:inherit;padding:8px;margin:4px 0} pre{background:#1c1c1c;padding:12px;min-height:140px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h1>GameForge Server v0.1</h1>
+  <label>Group <input id="group" value="demo"></label><br>
+  <button id="connect">WebSocket Connect</button>
+  <button id="send">Send Hello</button><br>
+  <input id="key" value="player_name"> <input id="value" value="Koushirou">
+  <button id="save">Save</button>
+  <button id="load">Load</button>
+  <pre id="log"></pre>
+<script>
+const log = (...v) => document.querySelector('#log').textContent += v.join(' ') + '\n';
+const group = () => encodeURIComponent(document.querySelector('#group').value);
+let ws;
+
+document.querySelector('#connect').onclick = () => {
+  ws = new WebSocket(`ws://localhost:8787/ws/${group()}`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => log('connected');
+  ws.onclose = () => log('closed');
+  ws.onmessage = async e => {
+    const text = typeof e.data === 'string' ? e.data : new TextDecoder().decode(e.data);
+    log('recv:', text);
+  };
+};
+
+document.querySelector('#send').onclick = () => ws?.send('hello from browser');
+
+document.querySelector('#save').onclick = async () => {
+  const key = encodeURIComponent(document.querySelector('#key').value);
+  const value = document.querySelector('#value').value;
+  const r = await fetch(`http://localhost:8787/api/groups/${group()}/state/${key}`, {
+    method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify({value})
+  });
+  log('save:', r.status, await r.text());
+};
+
+document.querySelector('#load').onclick = async () => {
+  const key = encodeURIComponent(document.querySelector('#key').value);
+  const r = await fetch(`http://localhost:8787/api/groups/${group()}/state/${key}`);
+  log('load:', r.status, await r.text());
+};
+</script>
+</body>
+</html>
